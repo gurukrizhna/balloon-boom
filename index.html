@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Balloon Boom: Spicy Edition</title>
+    <style>
+        :root {
+            --bg-color: #2c3e50;
+            --text-color: #ecf0f1;
+            --btn-pump: #e67e22;
+            --btn-pass: #27ae60;
+            --truth-color: #3498db;
+            --dare-color: #e74c3c;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* --- SCREENS --- */
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .screen.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- UI ELEMENTS --- */
+        h1 {
+            font-size: 3.5rem;
+            margin: 0;
+            background: linear-gradient(to right, #ff6b6b, #feca57);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+        .subtitle { font-size: 1rem; margin-bottom: 30px; opacity: 0.8; margin-top: 10px; max-width: 80%; }
+
+        .player-setup {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 20px;
+            width: 100%;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .count-display { font-size: 3rem; font-weight: 900; margin: 0 20px; color: #f1c40f; }
+        .count-btn { background: white; border: none; width: 50px; height: 50px; border-radius: 50%; font-size: 1.5rem; font-weight: bold; cursor: pointer; }
+
+        .btn-main {
+            background: white; color: #333; border: none; padding: 20px 40px; width: 100%;
+            font-size: 1.3rem; font-weight: 800; border-radius: 50px; cursor: pointer;
+            text-transform: uppercase; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        /* --- BALLOON --- */
+        .balloon-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; position: relative; }
+        .balloon {
+            width: 160px; height: 190px;
+            background: radial-gradient(circle at 35% 35%, #ff9f43, #ee5253, #b33939);
+            border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+            position: relative; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); z-index: 10;
+        }
+        .balloon::after {
+            content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%);
+            width: 24px; height: 18px; background: #b33939; clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+        }
+        .thread {
+            position: absolute; bottom: -120px; left: 50%; width: 2px; height: 120px;
+            background: rgba(255,255,255,0.6); transform-origin: top; animation: sway 3s infinite ease-in-out;
+        }
+        @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+        .popped { animation: explode 0.1s forwards; }
+        @keyframes explode { to { transform: scale(2); opacity: 0; } }
+
+        /* --- CONTROLS --- */
+        .controls { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+        .btn-pump {
+            background: var(--btn-pump); color: white; border: none; padding: 24px;
+            border-radius: 18px; font-size: 1.6rem; font-weight: 900; text-transform: uppercase;
+            box-shadow: 0 6px 0 #d35400; cursor: pointer; position: relative; top: 0;
+        }
+        .btn-pump:active { top: 6px; box-shadow: 0 0 0 #d35400; }
+        .btn-pass {
+            background: var(--btn-pass); color: white; border: none; padding: 16px;
+            border-radius: 12px; font-size: 1.1rem; font-weight: 700; opacity: 0.3; pointer-events: none;
+        }
+        .btn-pass.enabled { opacity: 1; pointer-events: all; cursor: pointer; box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4); }
+
+        /* --- PUNISHMENT CARD --- */
+        .punishment-card {
+            background: white; color: #333; padding: 30px 25px; border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6); margin-bottom: 30px;
+            animation: slideUp 0.5s ease-out; position: relative; overflow-y: auto; max-height: 50vh;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .type-badge {
+            display: inline-block; padding: 8px 20px; border-radius: 50px;
+            font-weight: 900; text-transform: uppercase; font-size: 1rem; margin-bottom: 15px;
+        }
+        .badge-truth { background: var(--truth-color); color: white; }
+        .badge-dare { background: var(--dare-color); color: white; }
+        .task-text { font-size: 1.3rem; font-weight: 700; line-height: 1.5; text-align: left; }
+        
+        /* Footer */
+        .footer { position: absolute; bottom: 0; width: 100%; text-align: center; padding: 15px; opacity: 0.5; font-size: 0.8rem; }
+        .footer a { color: white; text-decoration: none; }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+
+        <div id="screen-home" class="screen active">
+            <h1>BALLOON<br>BOOM</h1>
+            <div class="subtitle">Detailed Truths & Complicated Dares</div>
+            
+            <div class="player-setup">
+                <div style="opacity:0.7; margin-bottom:10px; font-weight:bold; text-align:center;">PLAYERS</div>
+                <div style="display:flex; justify-content:center; align-items:center;">
+                    <button class="count-btn" onclick="adjustPlayers(-1)">-</button>
+                    <span class="count-display" id="p-count">5</span>
+                    <button class="count-btn" onclick="adjustPlayers(1)">+</button>
+                </div>
+            </div>
+
+            <button class="btn-main" onclick="gameInit()">Start Game</button>
+        </div>
+
+        <div id="screen-game" class="screen">
+            <div style="text-align:center; margin-bottom:20px;">
+                <div style="font-size:1.5rem; font-weight:bold;" id="player-display">Player 1</div>
+                <div style="opacity:0.8;" id="instruction-text">Pump at least once</div>
+            </div>
+
+            <div class="balloon-wrapper">
+                <div class="balloon" id="balloon" style="--scale: 1;">
+                    <div class="thread"></div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn-pump" id="btn-pump" onclick="actionPump()">💨 PUMP</button>
+                <button class="btn-pass" id="btn-pass" onclick="actionPass()">Safe! Pass to Next</button>
+            </div>
+        </div>
+
+        <div id="screen-boom" class="screen">
+            <div style="font-size:3rem; font-weight:900; color:#ff4757; margin-bottom:10px;">BOOM!</div>
+            <div style="font-size:1.1rem; margin-bottom:20px;" id="loser-name">Player 1 Lost!</div>
+            
+            <div class="punishment-card">
+                <div id="task-badge" class="type-badge badge-truth">TRUTH</div>
+                <div id="task-text" class="task-text">...</div>
+            </div>
+
+            <button class="btn-main" onclick="uiShowHome()">Next Round</button>
+        </div>
+
+    </div>
+
+    <div class="footer">Developer <a href="https://instagram.com/gurukrizhna" target="_blank">@gurukrizhna</a></div>
+
+    <script>
+        // --- DATA STORED AS PIPE-SEPARATED STRINGS ---
+        // Contains detailed, funny, and complicated questions/dares.
+        
+        const truthData = "Open your Instagram DMs, type the letter 'a' in the search bar, and show the group the first person who pops up. Explain your last interaction with them.|If you had to delete one person in this room from your life to save your internet connection forever, who would you choose and why?|Scroll through your photo gallery with the brightness all the way up and let the group stop you at a random point. You must explain the context of that photo.|What is the specific lie you’ve told someone in this room that they still believe to be true right now?|Who in this room do you think has the worst taste in romantic partners? Give specific examples.|Unlock your phone and hand it to the person on your right. They are allowed to read out loud the last three notes in your Notes app.|If you were forced to marry someone in this room based purely on financial stability, who would it be and why?|What is the most embarrassing thing you have ever done to get a crush's attention that failed miserably?|Describe the most awkward date you have ever been on in excruciating detail, including what you were wearing.|If you had to swap bodies with someone in this room for a week, who would you absolutely REFUSE to swap with and why?|What is a secret habit you do when you are completely alone that would make everyone here judge you?|Go to your Google search history, read the last 5 things you searched, and explain why you searched for them.|Which person in this room would you trust the LEAST to delete your browser history if you died?|If we were all in a horror movie, who in this room would die first and exactly how would it happen?|Have you ever stalked someone's location on Snap Map or Find My Friends just to avoid them? Who was it?|What is the pettiest reason you have ever stopped talking to a friend or broke up with someone?|If you had to wear the clothes of one person in this room for the rest of your life, whose wardrobe would you steal?|Show the group the last photo you put in your 'Recently Deleted' folder and explain why you deleted it.|Who in this room do you think is most likely to join a cult accidentally? Explain your reasoning.|What is the longest amount of time you have gone without showering, and what was the specific reason?|If you could look through one person's phone in this room without them knowing, whose phone would you pick and what app would you open first?|Have you ever practiced an argument in the shower and then actually used those exact lines in real life? What was the argument about?|What is a rumor you heard about someone in this room that you secretly believe might be true?|If you were arrested tonight, who in this room would be the one person you would NOT call for bail money?|Rate everyone's outfit in this room on a scale of 1 to 10, but you must give a detailed reason for the lowest score.|Have you ever pretended to like a gift from someone in this room but actually threw it away or regifted it?|What is the most cringeworthy caption you have ever posted on social media? Scroll back and find it.|If you had to be handcuffed to one person in this room for 24 hours, who would make you lose your mind the fastest?|Have you ever screenshotted a conversation with someone in this room and sent it to someone else to make fun of them?|What is the specific thing about yourself that you are most insecure about that nobody else probably notices?|If you were a ghost, who in this room would you haunt specifically to annoy them, and what pranks would you pull?|Have you ever muted someone's story on social media because they were too annoying? Who was it?|If you had to create a Tinder profile for the person to your left, what would you write in their bio to make sure they get ZERO matches?|What is the most expensive thing you have ever broken and then hid the evidence so nobody would know?|Who in this room do you think would be the worst boss to work for and why?|Have you ever faked being sick to get out of hanging out with someone in this room? Be honest.|If you could trade lives with one celebrity but you had to take their scandals too, who would it be?|What is the weirdest thing you have ever eaten just because you were trying to impress someone?|If you had to get a tattoo of one person's face in this room, whose face would look the least weird on your body?|What is a lie you told your parents that was so big you still have to keep it up to this day?|If you checked your screen time report right now, which app would be number one and are you embarrassed by the amount of hours?|Have you ever laughed at a joke you didn't understand just to fit in? What was the joke?|Who in this room thinks they are funny but actually tells the worst dad jokes?|If you had to live on a deserted island with two people from this room, who would you bring for survival and who would you bring for entertainment?|What is the most embarrassing thing your parents have ever caught you doing?|Have you ever sent a risky text, immediately regretted it, and tried to delete it before they saw it? What did it say?|If you could un-meet one person you met this year, who would it be and why?|What is the grossest habit you have that you would break up with someone else for having?|If you had to act as a personal assistant to someone in this room for a week, who would you choose to minimize your suffering?|Have you ever accidentally liked a photo while stalking someone deep in their profile? How long ago was the photo posted?";
+
+        const dareData = "Go to your kitchen, mix orange juice, milk, and ketchup in a shot glass, and drink it all while making intense eye contact with the person to your left.|Hand your unlocked phone to the person on your right. They are allowed to post a status on your Facebook or Instagram that says 'I finally found out I'm part alien' and you cannot delete it for 1 hour.|Call the 7th contact in your phone, sing 'Happy Birthday' to them (even if it is not their birthday), and hang up immediately without explaining.|Lay on the floor, curl up into a ball, and act like a piece of bacon frying in a pan. You must make sizzling noises for 30 full seconds.|Let the group choose a random object in the room. You must try to sell it to them like a desperate infomercial host for 2 minutes without stopping.|Go outside (or open a window) and scream 'I AM THE KING OF THE SQUIRRELS' at the top of your lungs.|Allow the person to your left to draw a mustache and unibrow on your face with a pen. You cannot wash it off for the rest of the game.|Text your crush (or a random contact chosen by the group) the words 'I have a secret to tell you...' and then don't reply to them for 10 minutes.|Put your socks on your hands and try to eat a snack (like a chip or cookie) without dropping it. If you drop it, you have to eat it off the floor.|Do an interpretive dance representing the life cycle of a butterfly (egg, caterpillar, cocoon, butterfly) for 1 minute. No music allowed.|Let the group mix a 'mystery potion' using 4 liquids found in the fridge. You must take one large sip.|Speak with a fake British accent for the next 3 rounds. If you break character, you have to do 20 pushups immediately.|Take a selfie making the ugliest face possible and post it to your main social media story with the caption 'Feeling cute, might delete later.'|Let everyone in the group go through your YouTube watch history and read out the most embarrassing video titles.|Call a local pizza place and ask them if they sell boneless pizza. Keep them on the line for as long as possible.|Go to the bathroom, wet your hair completely, and style it into a crazy mohawk or horns. Keep it like that for the next 20 minutes.|Let the person on your right write a word of their choice on your forehead in marker. You cannot look at a mirror to see what it is.|Perform a 1-minute rap about how much you love toenails. You must make it rhyme.|Exchange shirts with the person to your left for the next 2 rounds (if comfortable), or wear your own shirt inside out and backward.|Sit on an imaginary chair (wall sit) for 2 minutes while answering random math questions from the group.|Open your most used social media app, find the first ad you see, and message the company asking if they are hiring professional nappers.|Let the group pose you like a mannequin in a weird position. You must stay perfectly still in that position for 2 minutes.|Put an ice cube down your back and leave it there until it completely melts.|Go to your contacts, close your eyes, scroll randomly, and call whoever your finger lands on. You must try to sell them car insurance.|Walk like a crab (on hands and feet, stomach up) across the room and back while humming the Mission Impossible theme song.|Let the group choose a contact in your phone. You must send them only emojis (no text) to try and communicate that you are being held hostage by squirrels.|Hold water in your mouth. The group has 1 minute to make you laugh. If you spit the water out, you must do the dare again.|Allow someone to tape your thumbs to your index fingers. You must play the rest of the game with 'dinosaur hands'.|Eat a spoonful of a condiment (mustard, hot sauce, or mayonnaise) chosen by the group, but you must smile the entire time.|Go into the middle of the room and perform a stand-up comedy routine for 1 minute. If nobody laughs, you have to do 20 jumping jacks.|Text your parents saying 'I decided to drop everything and become a professional clown.' Do not explain until they reply.|Let the person to your left create a new contact in your phone with a fake name and number. You cannot delete it for 24 hours.|Put a pair of underwear on your head like a hat and wear it for the next 3 rounds.|Allow the group to look through your photos and choose one to set as your lock screen wallpaper for the next 24 hours.|Do a dramatic death scene as if you were an actor in a soap opera. It must last at least 45 seconds.|Call a random number and sing the chorus of 'Let It Go' from Frozen, then hang up.|Let the group choose a song. You must lip-sync to it with 100% maximum energy and choreography.|Try to peel a banana using only your feet. If you fail after 2 minutes, you have to eat the peel (just a bite).|Go to the nearest mirror and have a serious argument with your reflection about why you deserve to be the President.|Let the group wrap you in toilet paper like a mummy. You must break free without using your hands.|Send a voice note to your best friend making animal noises for 10 seconds with no explanation.|Crawl around the room on your hands and knees pretending to be a cat, meowing at everyone for 1 minute.|Let the person to your right send a text from your phone to anyone they want (no deleting it!).|Try to drink a glass of water while doing a handstand (or while bending over upside down).|Put on a blindfold. The group will feed you a mystery food item from the kitchen. You must guess what it is.|Speak only in questions for the next 3 rounds. If you make a statement, you have to do 10 squats.|Do your best impression of someone in the room until the group guesses who it is.|Go outside and hug a tree for 1 minute. If someone sees you, scream 'MY PRECIOUS!'|Let the group re-style your hair using hair gel or water however they want. You can't fix it for the rest of the game.|Make up a short song about the person to your left and sing it to them in an opera style.";
+
+        // --- GAME CONFIG ---
+        let playerCount = 5;
+        let gameState = { currentPlayer: 1, totalPumps: 0, turnPumps: 0, threshold: 0, scale: 1, isLocked: false };
+        let audioCtx = null;
+
+        function adjustPlayers(val) {
+            playerCount += val;
+            if (playerCount < 2) playerCount = 2;
+            if (playerCount > 30) playerCount = 30;
+            document.getElementById('p-count').innerText = playerCount;
+        }
+
+        // --- AUDIO ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function sfxInflate() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            const pitch = 150 + (gameState.totalPumps * 3);
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(pitch + 100, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function sfxPop() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+            gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        // --- LOGIC ---
+        function gameInit() {
+            initAudio();
+            gameState.currentPlayer = 1; gameState.totalPumps = 0; gameState.turnPumps = 0; gameState.scale = 1; gameState.isLocked = false;
+            
+            const base = playerCount * 3;
+            const rand = Math.floor(Math.random() * 20);
+            gameState.threshold = base + rand;
+
+            resetVisuals();
+            document.getElementById('btn-pass').classList.remove('enabled');
+            uiShowScreen('screen-game');
+        }
+
+        function actionPump() {
+            if (gameState.isLocked) return;
+            gameState.isLocked = true;
+            gameState.totalPumps++; gameState.turnPumps++;
+
+            const growthRate = 0.04 * (10 / Math.max(10, playerCount));
+            gameState.scale += growthRate;
+            
+            const balloon = document.getElementById('balloon');
+            balloon.style.setProperty('--scale', gameState.scale);
+            balloon.style.transform = `scale(${gameState.scale})`;
+
+            sfxInflate();
+            if (navigator.vibrate) navigator.vibrate(30);
+
+            // Logic to pop or continue (150ms delay for animation)
+            setTimeout(() => {
+                if (gameState.totalPumps >= gameState.threshold) {
+                    doExplode();
+                } else {
+                    gameState.isLocked = false;
+                    if (gameState.turnPumps >= 1) {
+                        document.getElementById('btn-pass').classList.add('enabled');
+                        document.getElementById('instruction-text').innerText = "Risk it again or Pass?";
+                    }
+                }
+            }, 150);
+        }
+
+        function actionPass() {
+            if (gameState.turnPumps < 1 || gameState.isLocked) return;
+            gameState.currentPlayer++;
+            if (gameState.currentPlayer > playerCount) gameState.currentPlayer = 1;
+            gameState.turnPumps = 0;
+            document.getElementById('player-display').innerText = `Player ${gameState.currentPlayer}`;
+            document.getElementById('instruction-text').innerText = "Pump at least once";
+            document.getElementById('btn-pass').classList.remove('enabled');
+            
+            const currentBg = document.body.style.backgroundColor;
+            document.body.style.filter = "brightness(1.5)";
+            setTimeout(() => document.body.style.filter = "none", 200);
+        }
+
+        function doExplode() {
+            sfxPop();
+            if (navigator.vibrate) navigator.vibrate([100, 50, 500]);
+            
+            const balloon = document.getElementById('balloon');
+            balloon.classList.add('popped');
+            
+            // --- STRING SPLIT LOGIC ---
+            const isTruth = Math.random() > 0.5;
+            const sourceString = isTruth ? truthData : dareData;
+            const questions = sourceString.split('|');
+            const randomItem = questions[Math.floor(Math.random() * questions.length)];
+            
+            const badge = document.getElementById('task-badge');
+            badge.innerText = isTruth ? "TRUTH" : "DARE";
+            badge.className = `type-badge ${isTruth ? 'badge-truth' : 'badge-dare'}`;
+            document.getElementById('task-text').innerText = randomItem;
+
+            setTimeout(() => {
+                document.getElementById('loser-name').innerText = `Player ${gameState.currentPlayer} Popped It!`;
+                uiShowScreen('screen-boom');
+            }, 600);
+        }
+
+        function resetVisuals() {
+            const balloon = document.getElementById('balloon');
+            balloon.classList.remove('popped');
+            balloon.style.setProperty('--scale', 1);
+            balloon.style.transform = `scale(1)`;
+            document.getElementById('player-display').innerText = "Player 1";
+            document.getElementById('instruction-text').innerText = "Pump at least once";
+        }
+
+        function uiShowHome() { uiShowScreen('screen-home'); }
+        function uiShowScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+    </script>
+</body>
+</html>
